@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Juego del Impostor</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --card: rgba(17,24,39,.78);
+      --card2: rgba(17,24,39,.55);
+      --line: rgba(255,255,255,.08);
+      --text:#e5e7eb;
+      --muted: rgba(229,231,235,.7);
+      --green:#22c55e;
+      --blue:#38bdf8;
+      --red:#fb7185;
+      --shadow: 0 18px 40px rgba(0,0,0,.45);
+      --radius: 18px;
+    }
+    *{ box-sizing:border-box; }
+
+    body{
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(900px 500px at 10% 0%, rgba(56,189,248,.14), transparent 60%),
+        radial-gradient(700px 420px at 90% 10%, rgba(34,197,94,.12), transparent 55%),
+        radial-gradient(600px 420px at 40% 100%, rgba(251,113,133,.10), transparent 60%),
+        var(--bg);
+      color: var(--text);
+      margin:0;
+      padding:22px;
+    }
+    .wrap{ max-width: 980px; margin: 0 auto; }
+
+    h1{
+      font-size: 28px;
+      margin: 4px 0 18px;
+      display:flex; align-items:center; gap:10px;
+      letter-spacing:.2px;
+    }
+
+    .card{
+      background: linear-gradient(180deg, var(--card), var(--card2));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .card h3{ margin: 4px 0 10px; }
+    .hint{ color: var(--muted); margin: 6px 0 0; font-size: 13px; }
+
+    input{
+      width:100%;
+      padding:12px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.05);
+      color: var(--text);
+      outline: none;
+      font-size: 16px;
+    }
+    input::placeholder{ color: rgba(229,231,235,.55); }
+
+    .row{
+      display:flex;
+      gap:10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    button{
+      width:auto;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      font-size: 15px;
+      font-weight: 800;
+      cursor:pointer;
+      transition: transform .12s ease, filter .12s ease, box-shadow .12s ease;
+      box-shadow: 0 10px 18px rgba(0,0,0,.25);
+    }
+    button:active{ transform: scale(.98); }
+    button:hover{ filter: brightness(1.05); }
+
+    .btn-primary{ background: var(--green); color:#052e1c; }
+    .btn-secondary{ background: var(--blue); color:#042a36; }
+    .btn-danger{ background: var(--red); color:#3b0a16; }
+    .btn-wide{ flex: 1 1 220px; }
+    .btn-compact{ padding:10px 12px; font-size:14px; }
+
+    ul{ padding-left:0; list-style:none; margin:10px 0 0; }
+    .player-item{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:10px 12px;
+      margin-top:8px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+    }
+    .player-name{
+      flex:1;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-weight: 700;
+    }
+
+    #roundInfo{
+      margin: 10px 0 0;
+      color: rgba(229,231,235,.85);
+      font-weight: 700;
+    }
+
+    /* MODALES (reutilizables) */
+    .modal-backdrop{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(6px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+      z-index: 9999;
+    }
+    .modal-backdrop.show{ display:flex; }
+
+    .modal{
+      width: min(560px, 100%);
+      background: linear-gradient(180deg, rgba(17,24,39,.92), rgba(17,24,39,.72));
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 22px;
+      box-shadow: 0 30px 80px rgba(0,0,0,.6);
+      padding: 18px;
+      text-align:center;
+      position:relative;
+      overflow:hidden;
+      transform: translateY(8px);
+      opacity: .98;
+      animation: pop .18s ease-out;
+    }
+    @keyframes pop{
+      from{ transform: translateY(18px) scale(.98); opacity: 0; }
+      to{ transform: translateY(8px) scale(1); opacity: .98; }
+    }
+    .modal::before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background:
+        radial-gradient(520px 220px at 20% 0%, rgba(56,189,248,.22), transparent 60%),
+        radial-gradient(520px 220px at 80% 100%, rgba(34,197,94,.18), transparent 55%);
+      pointer-events:none;
+      opacity:.9;
+    }
+    .modal > *{ position:relative; z-index:1; }
+
+    .pill{
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      padding:8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      color: rgba(229,231,235,.9);
+      font-weight: 800;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    .modal h2{ margin: 4px 0 6px; font-size: 26px; }
+    .modal .bigname{ font-size: 30px; font-weight: 900; margin: 10px 0 14px; }
+    .modal .sub{ color: var(--muted); margin: 0 0 14px; font-size: 13px; }
+
+    .rolebox{
+      margin: 10px auto 14px;
+      width: min(460px, 100%);
+      border-radius: 18px;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.05);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .rolebox .roletext{
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing:.2px;
+    }
+    .rolebox .warn{
+      margin-top: 8px;
+      color: rgba(229,231,235,.75);
+      font-size: 13px;
+    }
+
+    @media (max-width:520px){
+      body{ padding: 16px; }
+      h1{ font-size: 24px; }
+      .btn-wide{ flex: 1 1 160px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <h1>🕵️ Juego del Impostor</h1>
+
+    <div class="card">
+      <h3>Jugadores</h3>
+      <input id="playerName" placeholder="Nombre del jugador" />
+      <div class="row">
+        <button class="btn-primary btn-wide" onclick="addPlayer()">Agregar jugador</button>
+      </div>
+      <ul id="playerList"></ul>
+    </div>
+
+    <div class="card">
+      <h3>Cargar palabras (ocultas)</h3>
+      <p class="hint">Cada jugador carga una palabra sin que nadie la vea.</p>
+      <input id="secretWord" type="password" placeholder="Escribí una palabra" />
+      <div class="row">
+        <button class="btn-secondary btn-wide" onclick="addSecretWord()">Agregar palabra</button>
+      </div>
+      <p id="wordCount" class="hint">Palabras cargadas: 0</p>
+    </div>
+
+    <div class="card">
+      <h3>Configuración de partida</h3>
+      <input id="impostorQty" type="number" min="1" value="1" placeholder="Cantidad de impostores" />
+      <p class="hint">Tip: 1 impostor cada 4-6 jugadores suele andar bien.</p>
+    </div>
+
+    <div class="card">
+      <h3>Ronda</h3>
+      <div class="row">
+        <button class="btn-primary btn-wide" onclick="startRound()">Iniciar ronda</button>
+        <button class="btn-danger btn-wide" onclick="resetGame()">Reiniciar juego</button>
+      </div>
+      <p id="roundInfo"></p>
+    </div>
+  </div>
+
+  <!-- MODAL: Turno del jugador -->
+  <div class="modal-backdrop" id="turnModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="turnTitle">
+      <div class="pill">📱 Pasá el celu</div>
+      <h2 id="turnTitle">Turno de</h2>
+      <div class="bigname" id="turnPlayerName">"---"</div>
+      <p class="sub">Asegurate que nadie más esté mirando.</p>
+      <div class="row" style="justify-content:center;">
+        <button class="btn-secondary btn-wide" onclick="openRoleModal()">Estoy listo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Rol -->
+  <div class="modal-backdrop" id="roleModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="roleTitle">
+      <div class="pill">🕵️ Tu rol</div>
+      <h2 id="roleTitle">Mirá tu rol</h2>
+      <div class="rolebox">
+        <div class="roletext" id="roleText">---</div>
+        <div class="warn">No lo digas en voz alta 😄</div>
+      </div>
+      <div class="row" style="justify-content:center;">
+        <button class="btn-primary btn-wide" onclick="confirmRole()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Comienza -->
+  <div class="modal-backdrop" id="startModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="startTitle">
+      <div class="pill">🎬 Inicio</div>
+      <h2 id="startTitle">Comienza</h2>
+      <div class="bigname" id="startPlayerName">"---"</div>
+      <p class="sub">¡Listo! Ahora jueguen y traten de descubrir al impostor.</p>
+      <div class="row" style="justify-content:center;">
+        <button class="btn-primary btn-wide" onclick="closeStartModal()">A jugar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  let players = [];
+  let words = [];
+  let usedWords = [];
+  let currentWord = null;
+  let impostorIndexes = [];
+  let currentIndex = 0;
+  let starterIndex = 0;
+
+  function addPlayer() {
+    const name = document.getElementById('playerName').value.trim();
+    if (!name) return;
+    players.push(name);
+    document.getElementById('playerName').value = '';
+    renderPlayers();
+  }
+
+  function removePlayer(index){
+    players.splice(index, 1);
+    renderPlayers();
+    if (players.length < 3) {
+      document.getElementById('roundInfo').textContent = 'Se necesitan al menos 3 jugadores para iniciar.';
+    }
+  }
+
+  function renderPlayers() {
+    const ul = document.getElementById('playerList');
+    ul.innerHTML = '';
+    players.forEach((p, i) => {
+      const li = document.createElement('li');
+      li.className = 'player-item';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'player-name';
+      nameSpan.textContent = p;
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-danger btn-compact';
+      delBtn.type = 'button';
+      delBtn.textContent = 'Eliminar';
+      delBtn.onclick = () => removePlayer(i);
+
+      li.appendChild(nameSpan);
+      li.appendChild(delBtn);
+      ul.appendChild(li);
+    });
+  }
+
+  function addSecretWord() {
+    const input = document.getElementById('secretWord');
+    const word = input.value.trim();
+    if (!word) return;
+
+    if (words.length >= 20) {
+      alert('Máximo 20 palabras');
+      return;
+    }
+
+    words.push(word);
+    input.value = '';
+    document.getElementById('wordCount').textContent = `Palabras cargadas: ${words.length}`;
+  }
+
+  function startRound() {
+    const impostorQty = parseInt(document.getElementById('impostorQty').value);
+
+    if (players.length < 3) return alert('Se necesitan al menos 3 jugadores');
+    if (impostorQty >= players.length) return alert('La cantidad de impostores debe ser menor a la de jugadores');
+    if (words.length === 0) return alert('Cargá palabras primero');
+
+    const available = words.filter(w => !usedWords.includes(w));
+    if (available.length === 0) return alert('Ya se usaron todas las palabras');
+
+    currentWord = available[Math.floor(Math.random() * available.length)];
+    usedWords.push(currentWord);
+
+    impostorIndexes = [];
+    while (impostorIndexes.length < impostorQty) {
+      const idx = Math.floor(Math.random() * players.length);
+      if (!impostorIndexes.includes(idx)) impostorIndexes.push(idx);
+    }
+
+    starterIndex = Math.floor(Math.random() * players.length);
+    currentIndex = starterIndex;
+
+    document.getElementById('roundInfo').textContent = 'Todos van a ver su rol en privado (modo popup).';
+
+    openTurnModal();
+  }
+
+  // ----- MODALES FLOW -----
+  function openTurnModal(){
+    document.getElementById('turnPlayerName').textContent = `"${players[currentIndex]}"`;
+    showModal('turnModal');
+  }
+
+  function openRoleModal(){
+    hideModal('turnModal');
+
+    const isImpostor = impostorIndexes.includes(currentIndex);
+    const roleText = isImpostor ? '😈 Sos el IMPOSTOR' : `📝 La palabra es: ${currentWord}`;
+    document.getElementById('roleText').textContent = roleText;
+
+    showModal('roleModal');
+  }
+
+  function confirmRole(){
+    hideModal('roleModal');
+
+    // avance circular
+    currentIndex = (currentIndex + 1) % players.length;
+
+    // si volvimos al starter -> todos vieron
+    if (currentIndex === starterIndex) {
+      showStartModal(players[starterIndex]);
+      return;
+    }
+
+    openTurnModal();
+  }
+
+  function showStartModal(name){
+    document.getElementById('startPlayerName').textContent = `"${name}"`;
+    showModal('startModal');
+  }
+
+  function closeStartModal(){
+    hideModal('startModal');
+    document.getElementById('roundInfo').textContent = `Comienza "${players[starterIndex]}". ¡A jugar!`;
+  }
+
+  // Helpers
+  function showModal(id){
+    document.getElementById(id).classList.add('show');
+  }
+  function hideModal(id){
+    document.getElementById(id).classList.remove('show');
+  }
+
+  // Cerrar tocando afuera
+  ['turnModal','roleModal','startModal'].forEach(id=>{
+    const el = document.getElementById(id);
+    el.addEventListener('click', (e) => {
+      if (e.target.id === id) {
+        // evitamos que se cierre el rol por error, pero si querés lo habilitamos:
+        if (id === 'roleModal') return;
+        hideModal(id);
+      }
+    });
+  });
+
+  function resetGame() {
+    usedWords = [];
+    currentWord = null;
+    impostorIndexes = [];
+    hideModal('turnModal');
+    hideModal('roleModal');
+    hideModal('startModal');
+    document.getElementById('roundInfo').textContent = 'Juego reiniciado';
+  }
+</script>
+</body>
+</html>
